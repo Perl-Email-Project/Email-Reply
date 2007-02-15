@@ -1,0 +1,8 @@
+1.201  2007-02-15
+       tests should not reply on super-exact stringifications
+
+1.200  2006-08-22
+       repair broken tests
+
+1.1    2004-07-09
+       Initial version.
