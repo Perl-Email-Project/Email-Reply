@@ -1,4 +1,4 @@
-use Test::More qw[no_plan];
+use Test::More tests => 16;
 use strict;
 $^W = 1;
 
@@ -32,17 +32,29 @@ my $reply = reply to => $simple, body => $response;
 
 $reply->header_set(Date => undef);
 
-is $reply->as_string, <<'__MESSAGE__', 'simple reply matches';
-From: <casey@geeknest.com>
-To: <alien@titan.saturn.sol>
-Subject: Re: Ping
+like(
+  $reply->header('from'),
+  qr{casey\@geeknest\.com},
+  "correct from on reply",
+);
 
-alien wrote:
-> Are you out there?
+like(
+  $reply->header('to'),
+  qr{alien\@titan\.saturn\.sol},
+  "correct to on reply",
+);
 
-Welcome to Earth!
+is(
+  $reply->header('subject'),
+  'Re: Ping',
+  'correct subject',
+);
 
-__MESSAGE__
+like(
+  $reply->body,
+  qr{^> Are you out there\?}sm,
+  'correct subject',
+);
 
 $simple->header_set(Date => undef);
 $simple->header_set(Cc => 'martian@mars.sol, "Casey" <human@earth.sol>');
@@ -60,68 +72,43 @@ my $complex = reply to         => $simple,
 $complex->header_set(Date => undef);
 $complex->header_set('Content-ID' => undef);
 $complex->boundary_set('boundary42');
-$complex->parts_set([map {$_->header_set(Date=>undef);$_} $complex->parts]);
-$complex->parts_set([map {$_->header_set('Content-ID'=>undef);$_} $complex->parts]);
-is $complex->as_string, <<'__COMPLEX__', 'complex reply matches';
-From: Casey West <human@earth.sol>
-To: <alien@titan.saturn.sol>
-Subject: Re: Ping
-In-Reply-To: <1232345@titan.saturn.sol>
-References: <1232345@titan.saturn.sol>
-Cc: <casey@geeknest.com>, <martian@mars.sol>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="boundary42"; charset="us-ascii"
 
+$complex->parts_set([
+  map { $_->header_set(Date => undef); $_ } $complex->parts
+]);
 
---boundary42
-MIME-Version: 1.0
+$complex->parts_set([
+  map { $_->header_set('Content-ID'=>undef); $_ } $complex->parts
+]);
 
-Welcome to Earth!
+is($complex->parts, 2, "one reply part, one original part");
 
-Quoth the raven:
-%% Are you out there?
-%% 
-%% 
-%% -- 
-%% The New Ones
+like(
+  ($complex->parts)[1]->header('content-type'),
+  qr{^message/rfc822},
+  'the second part is the original, rfc822-style',
+);
 
+like $complex->header('from'), qr/human\@earth\.sol/, "correct from";
 
-
-
---boundary42
-MIME-Version: 1.0
-Content-Type: message/rfc822; charset="us-ascii"
-
-To: <casey@geeknest.com>
-From: alien@titan.saturn.sol
-Subject: Ping
-Cc: martian@mars.sol, "Casey" <human@earth.sol>
-Message-ID: 1232345@titan.saturn.sol
-
-Are you out there?
-
-
--- 
-The New Ones
-
-
-
-
-
---boundary42--
-__COMPLEX__
+like $complex->header('in-reply-to'),
+     qr/1232345\@titan\.saturn\.sol/,
+     "correct from";
 
 $complex->header_set('Message-ID' => '4506957@earth.sol');
-my $replyreply = reply to => $complex, body => $response;
-$replyreply->header_set(Date => undef);
-is $replyreply->as_string, <<'__REPLY2__', 'reply to reply matched';
-From: <alien@titan.saturn.sol>
-To: Casey West <human@earth.sol>
-Subject: Re: Ping
-In-Reply-To: <4506957@earth.sol>
-References: <1232345@titan.saturn.sol> <4506957@earth.sol>
 
-Casey West wrote:
+my $replyreply = reply to => $complex, body => $response;
+
+like $replyreply->header('from'),
+     qr/alien\@titan\.saturn\.sol/,
+     "correct from";
+
+like $replyreply->header('in-reply-to'),
+     qr/4506957\@earth\.sol/,
+     "correct from";
+
+$replyreply->header_set(Date => undef);
+like $replyreply->as_string, qr{"?Casey West"? wrote:\Q
 > Welcome to Earth!
 > 
 > Quoth the raven:
@@ -130,8 +117,5 @@ Casey West wrote:
 > %% 
 > %% -- 
 > %% The New Ones
-
-Welcome to Earth!
-
-__REPLY2__
+\E}, "flat reply contains quoted body";
 
