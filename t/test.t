@@ -30,7 +30,7 @@ __MESSAGE__
 
 my $reply = reply to => $simple, body => $response;
 
-$reply->header_set(Date => undef);
+$reply->header_set(Date => ());
 
 like(
   $reply->header('from'),
@@ -56,7 +56,7 @@ like(
   'correct subject',
 );
 
-$simple->header_set(Date => undef);
+$simple->header_set(Date => ());
 $simple->header_set(Cc => 'martian@mars.sol, "Casey" <human@earth.sol>');
 $simple->header_set('Message-ID' => '1232345@titan.saturn.sol');
 my $complex = reply to         => $simple,
@@ -69,16 +69,16 @@ my $complex = reply to         => $simple,
                     prefix     => '%% ',
                     attrib     => 'Quoth the raven:',
                     body       => $response;
-$complex->header_set(Date => undef);
-$complex->header_set('Content-ID' => undef);
+$complex->header_set(Date => ());
+$complex->header_set('Content-ID' => ());
 $complex->boundary_set('boundary42');
 
 $complex->parts_set([
-  map { $_->header_set(Date => undef); $_ } $complex->parts
+  map { $_->header_set(Date => ()); $_ } $complex->parts
 ]);
 
 $complex->parts_set([
-  map { $_->header_set('Content-ID'=>undef); $_ } $complex->parts
+  map { $_->header_set('Content-ID' => ()); $_ } $complex->parts
 ]);
 
 is($complex->parts, 2, "one reply part, one original part");
@@ -107,8 +107,12 @@ like $replyreply->header('in-reply-to'),
      qr/4506957\@earth\.sol/,
      "correct from";
 
-$replyreply->header_set(Date => undef);
-like $replyreply->as_string, qr{"?Casey West"? wrote:\Q
+$replyreply->header_set(Date => ());
+
+my $string = $replyreply->as_string;
+$string =~ s/\x0d\x0a/\n/g;
+
+like $string, qr{"?Casey West"? wrote:\Q
 > Welcome to Earth!
 > 
 > Quoth the raven:

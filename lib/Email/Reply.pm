@@ -9,7 +9,7 @@ use Email::Address;
 use base qw[Exporter];
 
 use vars qw[$VERSION $CLASS @EXPORT];
-$VERSION = '1.201';
+$VERSION = '1.202';
 $CLASS   = __PACKAGE__;
 @EXPORT  = qw[reply];
 
