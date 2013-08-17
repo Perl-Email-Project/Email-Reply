@@ -1,3 +1,10 @@
+Revision history for Email-Reply
+
+{{$NEXT}}
+          update repo and bugtracker
+
+          reformat docs a bit
+
 1.202     2007-07-19
           tests should also not rely on broken line endings
           these tests are extremely anemic and should be improved

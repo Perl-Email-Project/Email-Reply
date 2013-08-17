@@ -1,17 +1,15 @@
-package Email::Reply;
 use strict;
+use warnings;
+package Email::Reply;
+# ABSTRACT: reply to an email message
 
-use Email::Abstract;
-use Email::MIME;
-use Email::MIME::Creator;
-use Email::Simple::Creator;
-use Email::Address;
-use base qw[Exporter];
+use Email::Abstract 2.01;
+use Email::Address 1.80;
+use Email::MIME 1.82;
+use Exporter 5.57 'import';
 
-use vars qw[$VERSION $CLASS @EXPORT];
-$VERSION = '1.202';
-$CLASS   = __PACKAGE__;
-@EXPORT  = qw[reply];
+my $CLASS   = __PACKAGE__;
+our @EXPORT  = qw[reply];
 my $CRLF = "\x0d\x0a";
 
 # Want to subclass and still use the functional interface?
@@ -166,12 +164,6 @@ sub _simple {
 
 1;
 
-__END__
-
-=head1 NAME
-
-Email::Reply - Reply to a Message
-
 =head1 SYNOPSIS
 
   use Email::Reply;
@@ -186,16 +178,11 @@ Email::Reply - Reply to a Message
   Thanks for the message, I'll be glad to explain...
   __RESPONSE__
 
-
 =head1 DESCRIPTION
 
 This software takes the hard out of generating replies to email messages.
 
-=head2 Functions
-
-=over 4
-
-=item reply
+=func reply
 
   my $reply   = reply to       => $message,
                       from     => '"Casey West" <casey@geeknest.com>',
@@ -216,66 +203,89 @@ This function accepts a number of named parameters and returns an email
 message object of type C<Email::MIME> or C<Email::Simple>, depending
 on the parameters passed. Lets review those parameters now.
 
-C<to> - This required parameter is the email message you're replying to. It
-can represent a number of object types, or a string containing the message.
-This value is passed directly to C<Email::Abstract> without passing go or
-collecting $200 so please, read up on its available plugins for what is
-allowed here.
+=begin :list
 
-C<from> - This optional parameter specifies an email address to use indicating
-the sender of the reply message. It can be a string or an C<Email::Address>
-object. In the absence of this parameter, the first address found in the
-original message's C<To> header is used. This may not always be what you want,
-so this parameter comes highly recommended.
+= C<to>
 
-C<all> - This optional parameter indicates weather or not you'd like to
-"Reply to All." If true, the reply's C<Cc> header will be populated with
-all the addresses in the original's C<To> and C<Cc> headers. By default,
-the parameter is false, indicating "Reply to Sender."
+This required parameter is the email message you're replying to. It can
+represent a number of object types, or a string containing the message.  This
+value is passed directly to C<Email::Abstract> without passing go or collecting
+$200 so please, read up on its available plugins for what is allowed here.
 
-C<self> - This optional parameter decides weather or not an address matching
-the C<from> address will be included in the list of C<all> addresses. If
-true, your address will be preserved in that list if it is found. If false,
-as it is by default, your address will be removed from the list. As you might
-expect, this parameter is only useful if C<all> is true.
+= C<from>
 
-C<attach> - This optional parameter allows for the original message, in
+This optional parameter specifies an email address to use indicating the sender
+of the reply message. It can be a string or an C<Email::Address> object. In the
+absence of this parameter, the first address found in the original message's
+C<To> header is used. This may not always be what you want, so this parameter
+comes highly recommended.
+
+= C<all>
+
+This optional parameter indicates weather or not you'd like to "Reply to All."
+If true, the reply's C<Cc> header will be populated with all the addresses in
+the original's C<To> and C<Cc> headers. By default, the parameter is false,
+indicating "Reply to Sender."
+
+= C<self>
+
+This optional parameter decides weather or not an address matching the C<from>
+address will be included in the list of C<all> addresses. If true, your address
+will be preserved in that list if it is found. If false, as it is by default,
+your address will be removed from the list. As you might expect, this parameter
+is only useful if C<all> is true.
+
+= C<attach>
+
+This optional parameter allows for the original message, in
 its entirety, to be encapsulated in a MIME part of type C<message/rfc822>.
 If true, the returned object from C<reply> will be a C<Email::MIME> object
 whose second part is the encapsulated message. If false, none of this happens.
 By default, none of this happens.
 
-C<quote> - This optional parameter, which is true by default, will quote
+= C<quote>
+
+This optional parameter, which is true by default, will quote
 the original message for your reply. If the original message is a MIME
 message, the first C<text/plain> type part will be quoted. If it's a Simple
 message, the body will be quoted. Well, that's only if you keep the
 parameter true. If you don't, none of this occurs.
 
-C<top_post> - This optional parameter, whose use is generally discouraged,
-will allow top posting when true. It will implicitly set C<quote> to true,
-and put your C<body> before the quoted text. It is false by default, and
-you should do your best to keep it that way.
+= C<top_post>
 
-C<keep_sig> - This optional parameter toggles the signature stripping
-mechanism. True by default, the original quoted body will have its signature
-removed. When false, the signature is left in-tact and will be quoted
-accordingly. This is only useful when C<quote> is true.
+This optional parameter, whose use is generally discouraged, will allow top
+posting when true. It will implicitly set C<quote> to true, and put your
+C<body> before the quoted text. It is false by default, and you should do your
+best to keep it that way.
 
-C<prefix> - This optional parameter specifies the quoting prefix. By default,
-it's C<< > >>, but you can change it by setting this parameter. Again, only
+= C<keep_sig> 
+
+This optional parameter toggles the signature stripping mechanism. True by
+default, the original quoted body will have its signature removed. When false,
+the signature is left in-tact and will be quoted accordingly. This is only
 useful when C<quote> is true.
 
-C<attrib> - This optional parameter specifies the attribution line to add
-to the beginning of quoted text. By default, the name or email address
-of the original sender is used to replace C<%s> in the string, C<"%s wrote:">.
-You may change that with this parameter. No special formats, C<sprintf()> or
-otherwise, are provided for your convenience. Sorry, you'll have to make due.
-Like C<prefix> and C<keep_sig>, this is only good when C<quote> is true.
+= C<prefix> 
 
-C<body> - This requried parameter contains your prose, your manifesto, your
-reply. Remember to spell check!
+This optional parameter specifies the quoting prefix. By default, it's
+C<< > >>, but you can change it by setting this parameter. Again, only useful
+when C<quote> is true.
 
-=back
+= C<attrib>
+
+This optional parameter specifies the attribution line to add to the beginning
+of quoted text. By default, the name or email address of the original sender is
+used to replace C<%s> in the string, C<"%s wrote:">.  You may change that with
+this parameter. No special formats, C<sprintf()> or otherwise, are provided for
+your convenience. Sorry, you'll have to make due.  Like C<prefix> and
+C<keep_sig>, this is only good when C<quote> is true.
+
+= C<body>
+
+This requried parameter contains your prose, your manifesto, your reply.
+Remember to spell check!
+
+=end :list
 
 =head1 SEE ALSO
 
@@ -285,15 +295,3 @@ L<Email::MIME::Creator>,
 L<Email::Simple::Creator>,
 L<Email::Address>,
 L<perl>.
-
-=head1 AUTHOR
-
-Casey West, <F<casey@geeknest.com>>.
-
-=head1 COPYRIGHT
-
-  Copyright (c) 2004 Casey West.  All rights reserved.
-  This module is free software; you can redistribute it and/or modify it
-  under the same terms as Perl itself.
-
-=cut
