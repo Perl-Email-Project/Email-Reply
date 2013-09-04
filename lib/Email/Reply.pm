@@ -282,7 +282,7 @@ C<keep_sig>, this is only good when C<quote> is true.
 
 = C<body>
 
-This requried parameter contains your prose, your manifesto, your reply.
+This required parameter contains your prose, your manifesto, your reply.
 Remember to spell check!
 
 =end :list
