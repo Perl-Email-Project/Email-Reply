@@ -38,11 +38,25 @@ sub _new {
   ($self->{from}) =
     Email::Address->parse($args{from} || $self->{original}->header('To'));
 
-  ($self->{to}) = Email::Address->parse(
-       $self->{original}->header('Reply-To')
-    || $self->{original}->header('From')
-    || $self->{original}->header('Return-Path')
-  );
+  # There are three headers which may give the 'to' address.
+  my $addr_to_parse;
+  my @headers = qw(Reply-To From Return-Path);
+  my $orig = $self->{original};
+  foreach (@headers) {
+      my $v = $orig->header($_);
+      if (defined $v) {
+          $addr_to_parse = $v;
+          last;
+      }
+  }
+  die "did not find any of the headers: @headers" if not defined $addr_to_parse;
+
+  # Parse it and check it succeeded.
+  my (@parsed) = Email::Address->parse($addr_to_parse);
+  foreach (@parsed) { die if not defined }
+  die "failed to parse address '$addr_to_parse'" if not @parsed;
+  die "strange, '$addr_to_parse' parses to more than one address: @parsed" if @parsed != 1;
+  $self->{to} = $parsed[0];
 
   $self->{attrib} = $args{attrib}
     || (($self->{to}->name || join($self->{to}->address, '<', '>')) . ' wrote:');
