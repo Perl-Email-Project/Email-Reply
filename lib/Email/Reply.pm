@@ -44,7 +44,7 @@ sub _new {
   my $orig = $self->{original};
   foreach (@headers) {
       my $v = $orig->header($_);
-      if (defined $v) {
+      if (defined $v and $v ne '') {
           $addr_to_parse = $v;
           last;
       }
