@@ -88,13 +88,13 @@ sub _make_headers {
   push @header, Subject => $subject;
 
   my ($msg_id) = Email::Address->parse($self->{original}->header('Message-ID'));
-  push @header, 'In-Reply-To' => $msg_id;
+  push @header, 'In-Reply-To' => "<$msg_id>";
 
   my @refs = Email::Address->parse($self->{original}->header('References'));
   @refs = Email::Address->parse($self->{original}->header('In-Reply-To'))
     unless @refs;
   push @refs, $msg_id if $msg_id;
-  push @header, References => join ' ', @refs if @refs;
+  push @header, References => join ' ', map "<$_>", @refs if @refs;
 
   if ($self->{all}) {
     my @addrs = (
