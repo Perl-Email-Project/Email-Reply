@@ -4,7 +4,7 @@ package Email::Reply;
 # ABSTRACT: reply to an email message
 
 use Email::Abstract 2.01;
-use Email::Address 1.80;
+use Email::Address::XS;
 use Email::MIME 1.82;
 use Exporter 5.57 'import';
 
@@ -36,7 +36,8 @@ sub _new {
   $self->{original} = Email::MIME->new(Email::Abstract->as_string($args{to}));
 
   ($self->{from}) =
-    Email::Address->parse($args{from} || $self->{original}->header('To'));
+    Email::Address::XS->parse($args{from} || $self->{original}->header('To'));
+  die 'invalid from address' if not $self->{from};
 
   # There are three headers which may give the 'to' address.
   my $addr_to_parse;
@@ -52,8 +53,7 @@ sub _new {
   die "did not find any of the headers: @headers" if not defined $addr_to_parse;
 
   # Parse it and check it succeeded.
-  my (@parsed) = Email::Address->parse($addr_to_parse);
-  foreach (@parsed) { die if not defined }
+  my (@parsed) = Email::Address::XS->parse($addr_to_parse);
   die "failed to parse address '$addr_to_parse'" if not @parsed;
   die "strange, '$addr_to_parse' parses to more than one address: @parsed" if @parsed != 1;
   $self->{to} = $parsed[0];
@@ -78,33 +78,40 @@ sub _make_headers {
 
   my @header = (From => $self->{from},);
 
-  $self->{to}
-    ->name((Email::Address->parse($self->{original}->header('From')))[0]->name)
-    unless $self->{to}->name;
-  push @header, To => $self->{to};
+  if (not defined $self->{to}->phrase) {
+    my ($from) = Email::Address::XS->parse($self->{original}->header('From'));
+    $self->{to}->phrase($from->phrase) if defined $from;
+  }
+  push @header, To => $self->{to}->format;
 
   my $subject = $self->{original}->header('Subject') || '';
   $subject = "Re: $subject" unless $subject =~ /\bRe:/i;
   push @header, Subject => $subject;
 
-  my ($msg_id) = Email::Address->parse($self->{original}->header('Message-ID'));
-  push @header, 'In-Reply-To' => $msg_id;
+  my $msg_id = $self->{original}->header('Message-ID');
+  push @header, 'In-Reply-To' => $msg_id if $msg_id;
 
-  my @refs = Email::Address->parse($self->{original}->header('References'));
-  @refs = Email::Address->parse($self->{original}->header('In-Reply-To'))
-    unless @refs;
-  push @refs, $msg_id if $msg_id;
-  push @header, References => join ' ', @refs if @refs;
+  my $refs = $self->{original}->header('References') || $self->{original}->header('In-Reply-To');
+  if ($msg_id) {
+    if ($refs) {
+      $refs .= ' ' . $msg_id;
+    } else {
+      $refs = $msg_id;
+    }
+  }
+  push @header, References => $refs if $refs;
 
   if ($self->{all}) {
     my @addrs = (
-      Email::Address->parse($self->{original}->header('To')),
-      Email::Address->parse($self->{original}->header('Cc')),
+      map { Email::Address::XS->parse($_) } (
+        $self->{original}->header('To'),
+        $self->{original}->header('Cc'),
+      )
     );
     unless ($self->{self}) {
       @addrs = grep { $_->address ne $self->{from}->address } @addrs;
     }
-    push @header, Cc => join ', ', @addrs if @addrs;
+    push @header, Cc => Email::Address::XS::format_email_addresses(@addrs);
   }
 
   $self->{header} = \@header;
@@ -183,7 +190,7 @@ sub _simple {
   use Email::Reply;
 
   my $message = Email::Simple->new(join '', <>);
-  my $from    = (Email::Address->parse($message->header('From'))[0];
+  my $from    = Email::Address::XS->parse($message->header('From'));
   
   my $reply   = reply to   => $message,
                       from => '"Casey West" <casey@geeknest.com>',
@@ -229,7 +236,7 @@ $200 so please, read up on its available plugins for what is allowed here.
 = C<from>
 
 This optional parameter specifies an email address to use indicating the sender
-of the reply message. It can be a string or an C<Email::Address> object. In the
+of the reply message. It can be a string or an C<Email::Address::XS> object. In the
 absence of this parameter, the first address found in the original message's
 C<To> header is used. This may not always be what you want, so this parameter
 comes highly recommended.
@@ -307,5 +314,5 @@ L<Email::Abstract>,
 L<Email::MIME>,
 L<Email::MIME::Creator>,
 L<Email::Simple::Creator>,
-L<Email::Address>,
+L<Email::Address::XS>,
 L<perl>.
