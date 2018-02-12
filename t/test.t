@@ -1,4 +1,4 @@
-use Test::More tests => 16;
+use Test::More tests => 18;
 use strict;
 $^W = 1;
 
@@ -7,7 +7,7 @@ BEGIN {
     use_ok 'Email::Simple';
     use_ok 'Email::Simple::Creator';
     use_ok 'Email::MIME::Modifier';
-    use_ok 'Email::Address';
+    use_ok 'Email::Address::XS';
 }
 
 my $response = <<__RESPONSE__;
@@ -16,7 +16,7 @@ __RESPONSE__
 
 my $simple = Email::Simple->create(
     header => [
-        To      => Email::Address->new(undef, 'casey@geeknest.com'),
+        To      => Email::Address::XS->new(undef, 'casey@geeknest.com'),
         From    => 'alien@titan.saturn.sol',
         Subject => 'Ping',
     ],
@@ -58,9 +58,11 @@ like(
 
 $simple->header_set(Date => ());
 $simple->header_set(Cc => 'martian@mars.sol, "Casey" <human@earth.sol>');
-$simple->header_set('Message-ID' => '1232345@titan.saturn.sol');
+$simple->header_set('Message-ID' => '<1232345@titan.saturn.sol>');
+$simple->header_set('In-Reply-To'=> '<6789000@titan.saturn.sol>');
+$simple->header_set('References' => '<6789000@titan.saturn.sol>');
 my $complex = reply to         => $simple,
-                    from       => Email::Address->new('Casey West', 'human@earth.sol'),
+                    from       => Email::Address::XS->new('Casey West', 'human@earth.sol'),
                     all        => 1,
                     self       => 1,
                     attach     => 1,
@@ -91,11 +93,15 @@ like(
 
 like $complex->header('from'), qr/human\@earth\.sol/, "correct from";
 
-like $complex->header('in-reply-to'),
-     qr/1232345\@titan\.saturn\.sol/,
-     "correct from";
+is $complex->header('in-reply-to'),
+   '<1232345@titan.saturn.sol>',
+   "correct in-reply-to";
 
-$complex->header_set('Message-ID' => '4506957@earth.sol');
+is $complex->header('references'),
+   '<6789000@titan.saturn.sol> <1232345@titan.saturn.sol>',
+   "correct references";
+
+$complex->header_set('Message-ID' => '<4506957@earth.sol>');
 
 my $replyreply = reply to => $complex, body => $response;
 
@@ -103,9 +109,13 @@ like $replyreply->header('from'),
      qr/alien\@titan\.saturn\.sol/,
      "correct from";
 
-like $replyreply->header('in-reply-to'),
-     qr/4506957\@earth\.sol/,
-     "correct from";
+is $replyreply->header('in-reply-to'),
+   '<4506957@earth.sol>',
+   "correct in-reply-to";
+
+is $replyreply->header('references'),
+   '<6789000@titan.saturn.sol> <1232345@titan.saturn.sol> <4506957@earth.sol>',
+   "correct references";
 
 $replyreply->header_set(Date => ());
 
